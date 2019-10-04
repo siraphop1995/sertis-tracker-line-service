@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const process = require('process');
-const routes = require('./src')
+const routes = require('./src');
 
 app = require('./app');
 port = process.env.PORT || 3000;
@@ -13,11 +13,11 @@ const mongooseConfig = {
 };
 mongoose.connect(process.env.MONGO_URL, mongooseConfig, error => {
   if (error) throw error;
-  console.log('Successfully connected to mongodb');
+  console.log('Successfully connected to mongodb at:', process.env.MONGO_URL);
 });
 
 //Router
-app.use('/', routes)
+app.use('/', routes);
 
 //Listen port
 app.listen(port, () => {
