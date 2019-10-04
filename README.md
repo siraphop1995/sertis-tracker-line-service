@@ -18,7 +18,7 @@
 
 Docker mongo at port `27017`:  
 ```
-docker run -d --name stt-mongo -p 27017:27017 stt-mongo
+docker run -d --name stt-mongo -p 27017:27017 mongo
 ```
 PM2
 ```

@@ -16,6 +16,15 @@ exports.helloWorld = (req, res, next) => {
   res.send('Hello World!');
 };
 
+exports.webhook = async (req, res, next) => {
+  console.log('webhook');
+  try {
+    res.status(200).send('webhook');
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getAllUsers = async (req, res, next) => {
   console.log('getAllUsers');
   try {

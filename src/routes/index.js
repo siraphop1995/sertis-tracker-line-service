@@ -4,6 +4,9 @@ module.exports = {
   'GET /': {
     middlewares: ['helloWorld']
   },
+  'POST /webhook': {
+    middlewares: ['webhook']
+  },
   'GET /user': {
     middlewares: ['getAllUsers']
   },
