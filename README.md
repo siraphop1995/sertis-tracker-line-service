@@ -1,6 +1,7 @@
 # Sertis Tracker Line Service (Prototype)
 
-> A template to start using express
+> Heroku: `https://stt-line-service.herokuapp.com/`
+> Github: `https://github.com/siraphop1995/sertis-tracker-line-service`
 
 ## <a name="contents"></a> Contents
  - [Dependencies](#dependencies)

@@ -16,7 +16,7 @@ module.exports = {
       }
     }
   ].map(service => {
-    service.watch = false;
+    service.watch = true;
     service.instances = 1;
     service.exec_mode = 'cluster';
     return service;
