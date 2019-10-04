@@ -1,16 +1,17 @@
 'use strict';
 
-/**
- * Middlewares to handle requests.
- * Business logics (e.g. db, provider) should be implementd separately
- * and exposed as a list of methods that will be called here.
- *
- * Different schemas may require different implementation of standard methods
- * (list, get, create, update, delete). Consult mongoose documentation
- * for more details.
- */
 const _ = require('lodash');
 const User = require('../models/userListModel');
+const line = require('@line/bot-sdk');
+const { WebhookClient, Payload } = require('dialogflow-fulfillment');
+const { Card, Suggestion } = require('dialogflow-fulfillment');
+
+let config = {
+  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
+  channelSecret: process.env.CHANNEL_SECRET
+};
+
+const client = new line.Client(config);
 
 exports.helloWorld = (req, res, next) => {
   res.send('Hello World!');
@@ -19,7 +20,15 @@ exports.helloWorld = (req, res, next) => {
 exports.webhook = async (req, res, next) => {
   console.log('webhook');
   try {
-    res.status(200).send('webhook');
+    const agent = new WebhookClient({ request: req, response: res });
+
+    function initialize(agent) {
+      agent.add('initialize');
+    }
+
+    let intentMap = new Map();
+    intentMap.set('Initialize', initialize);
+    agent.handleRequest(intentMap);
   } catch (err) {
     next(err);
   }
