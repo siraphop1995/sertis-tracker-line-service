@@ -17,75 +17,103 @@ exports.helloWorld = (req, res, next) => {
   res.send('Hello World!');
 };
 
+//Dialogflow webhook
 exports.webhook = async (req, res, next) => {
   console.log('webhook');
   try {
     const agent = new WebhookClient({ request: req, response: res });
 
-    function initialize(agent) {
-      agent.add('initialize');
-    }
-
     let intentMap = new Map();
-    intentMap.set('Initialize', initialize);
-    agent.handleRequest(intentMap);
+    intentMap.set('Default Fallback Intent', defaultAction);
+    intentMap.set('Initialize Intent', initialize);
+    intentMap.set('Check ID Intent', checkLineId);
+    intentMap.set('Leave Intent', leaveHandler);
+
+    await agent.handleRequest(intentMap);
   } catch (err) {
     next(err);
   }
 };
 
-exports.getAllUsers = async (req, res, next) => {
-  console.log('getAllUsers');
-  try {
-    const user = await User.find({}, null);
-    res.json(user);
-  } catch (err) {
-    next(err);
-  }
-};
+//Default Fall Back Intent handler
+function defaultAction(agent) {
+  console.log('defaultAction');
 
-exports.addUser = async (req, res, next) => {
-  console.log('addUser');
-  try {
-    let newUser = new User(req.body);
-    const user = await newUser.save();
-    return res.json(user);
-  } catch (err) {
-    next(err);
+  const { body } = agent.request_;
+  const { fulfillmentText, queryText } = body.queryResult;
+  const { data } = body.originalDetectIntentRequest.payload;
+  switch (queryText.toLowerCase()) {
+    case 'bye':
+      agent.add('bye');
+      switch (data.source.type) {
+        case 'user':
+          return replyText(data.replyToken, "Bot can't leave from 1:1 chat");
+        case 'group':
+          return replyText(data.replyToken, 'Leaving group').then(() => {
+            client.leaveGroup(data.source.groupId);
+          });
+        case 'room':
+          return replyText(data.replyToken, 'Leaving group').then(() => {
+            client.leaveRoom(data.source.roomId);
+          });
+      }
+    default:
+      return agent.add(fulfillmentText);
   }
-};
+}
 
-exports.getAUser = async (req, res, next) => {
-  console.log('getAUser');
-  try {
-    const user = await User.findById(req.params.userId);
-    res.json(user);
-  } catch (err) {
-    next(err);
-  }
-};
+//Initialize Intent handler
+async function initialize(agent) {
+  console.log('initialize');
+  const { body } = agent.request_;
+  const { data } = body.originalDetectIntentRequest.payload;
 
-exports.updateUser = async (req, res, next) => {
-  console.log('updateUser');
   try {
-    let newUser = req.body;
-    const user = await User.findByIdAndUpdate(req.params.userId, newUser);
-    res.json(user);
-  } catch (err) {
-    next(err);
-  }
-};
+    let newUser = new User({
+      lineId: data.source.userId,
+      employeeId: '123456',
+      firstName: 'Siraphop',
+      lastName: 'Amo',
+      nickName: 'Champ'
+    });
+    await newUser.save();
 
-exports.deleteUser = async (req, res, next) => {
-  console.log('deleteUser');
-  try {
-    const user = await User.findByIdAndRemove(req.params.userId);
-    const response = {
-      message: 'Delete user id: ' + req.params.userId + ' successfully',
-      id: user._id
-    };
-    res.json(response);
+    console.log(newUser);
+    agent.add('Account created successfully');
   } catch (err) {
-    next(err);
+    if (err.code === 11000) {
+      const profile = await client.getProfile(data.source.userId);
+      agent.add(profile.displayName + ' account is already initialize');
+    } else {
+      agent.add(err.message);
+    }
+    throw err;
   }
+}
+
+//Check ID Intent handler
+async function checkLineId(agent) {
+  console.log('checkLineId');
+  const { body } = agent.request_;
+  const { data } = body.originalDetectIntentRequest.payload;
+
+  agent.add('LINE ID: ' + data.source.userId);
+}
+
+//Check ID Intent handler
+async function leaveHandler(agent) {
+  console.log('leaveHandler');
+  const { body } = agent.request_;
+  const { data } = body.originalDetectIntentRequest.payload;
+  const { name } = body.queryResult.parameters;
+
+  agent.add('Name: ' + name);
+}
+
+const replyText = (token, texts) => {
+  texts = Array.isArray(texts) ? texts : [texts];
+  return client.replyMessage(
+    token,
+    texts.map(text => ({ type: 'text', text }))
+  );
 };
