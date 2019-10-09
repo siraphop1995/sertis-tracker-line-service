@@ -6,7 +6,7 @@ module.exports = {
       env: {
         PORT: 7001,
         NODE_ENV: 'development',
-        MONGO_URL: 'mongodb://localhost:27017/line'
+        MONGO_URL: 'mongodb://localhost:27017/stt'
       },
       env_production: {
         PORT: 7001,

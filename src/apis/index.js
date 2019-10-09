@@ -21,93 +21,116 @@ exports.helloWorld = (req, res, next) => {
 exports.webhook = async (req, res, next) => {
   console.log('webhook');
   try {
-    const agent = new WebhookClient({ request: req, response: res });
+    var agent = new WebhookClient({ request: req, response: res });
 
-    let intentMap = new Map();
-    intentMap.set('Default Fallback Intent', defaultAction);
-    intentMap.set('Initialize Intent', initialize);
-    intentMap.set('Check ID Intent', checkLineId);
-    intentMap.set('Leave Intent', leaveHandler);
+    var intentMap = new Map();
+    intentMap.set('Default Fallback Intent', defaultAction(next));
+    intentMap.set('Initialize Intent', initialize(next));
+    intentMap.set('Check ID Intent', checkLineId(next));
+    intentMap.set('Leave Intent', leaveHandler(next));
 
     await agent.handleRequest(intentMap);
   } catch (err) {
+    agent.add('test');
     next(err);
   }
 };
 
 //Default Fall Back Intent handler
-function defaultAction(agent) {
-  console.log('defaultAction');
-
-  const { body } = agent.request_;
-  const { fulfillmentText, queryText } = body.queryResult;
-  const { data } = body.originalDetectIntentRequest.payload;
-  switch (queryText.toLowerCase()) {
-    case 'bye':
-      agent.add('bye');
-      switch (data.source.type) {
-        case 'user':
-          return replyText(data.replyToken, "Bot can't leave from 1:1 chat");
-        case 'group':
-          return replyText(data.replyToken, 'Leaving group').then(() => {
-            client.leaveGroup(data.source.groupId);
-          });
-        case 'room':
-          return replyText(data.replyToken, 'Leaving group').then(() => {
-            client.leaveRoom(data.source.roomId);
-          });
+function defaultAction(next) {
+  return async agent => {
+    console.log('defaultAction');
+    const { body } = agent.request_;
+    const { fulfillmentText, queryText } = body.queryResult;
+    const { data } = body.originalDetectIntentRequest.payload;
+    try {
+      switch (queryText.toLowerCase()) {
+        case 'bye':
+          agent.add('bye');
+          switch (data.source.type) {
+            case 'user':
+              return replyText(
+                data.replyToken,
+                "Bot can't leave from 1:1 chat"
+              );
+            case 'group':
+              return replyText(data.replyToken, 'Leaving group').then(() => {
+                client.leaveGroup(data.source.groupId);
+              });
+            case 'room':
+              return replyText(data.replyToken, 'Leaving group').then(() => {
+                client.leaveRoom(data.source.roomId);
+              });
+          }
+        default:
+          return agent.add(fulfillmentText);
       }
-    default:
-      return agent.add(fulfillmentText);
-  }
+    } catch (err) {
+      agent.add(err.message);
+      next(err);
+    }
+  };
+}
+
+//Check ID Intent handler
+function checkLineId(next) {
+  return async agent => {
+    console.log('checkLineId');
+    const { body } = agent.request_;
+    const { data } = body.originalDetectIntentRequest.payload;
+    try {
+      agent.add('LINE ID: ' + data.source.userId);
+    } catch (err) {
+      agent.add(err.message);
+      next(err);
+    }
+  };
 }
 
 //Initialize Intent handler
-async function initialize(agent) {
-  console.log('initialize');
-  const { body } = agent.request_;
-  const { data } = body.originalDetectIntentRequest.payload;
+function initialize(next) {
+  return async agent => {
+    console.log('initialize');
+    const { body } = agent.request_;
+    const { data } = body.originalDetectIntentRequest.payload;
+    try {
+      let newUser = new User({
+        lineId: data.source.userId,
+        employeeId: '123456',
+        firstName: 'Siraphop',
+        lastName: 'Amo',
+        nickName: 'Champ'
+      });
+      await newUser.save();
 
-  try {
-    let newUser = new User({
-      lineId: data.source.userId,
-      employeeId: '123456',
-      firstName: 'Siraphop',
-      lastName: 'Amo',
-      nickName: 'Champ'
-    });
-    await newUser.save();
-
-    console.log(newUser);
-    agent.add('Account created successfully');
-  } catch (err) {
-    if (err.code === 11000) {
-      const profile = await client.getProfile(data.source.userId);
-      agent.add(profile.displayName + ' account is already initialize');
-    } else {
-      agent.add(err.message);
+      console.log(newUser);
+      agent.add('Account created successfully');
+    } catch (err) {
+      if (err.code === 11000) {
+        const profile = await client.getProfile(data.source.userId);
+        agent.add(profile.displayName + ' account is already initialize');
+      } else {
+        agent.add(err.message);
+      }
+      next(err);
     }
-    throw err;
-  }
+  };
 }
 
-//Check ID Intent handler
-async function checkLineId(agent) {
-  console.log('checkLineId');
-  const { body } = agent.request_;
-  const { data } = body.originalDetectIntentRequest.payload;
+//Leave Intent handler
+function leaveHandler(next) {
+  return async agent => {
+    console.log('leaveHandler');
+    try {
+      const { body } = agent.request_;
+      const { name } = body.queryResult.parameters;
 
-  agent.add('LINE ID: ' + data.source.userId);
-}
-
-//Check ID Intent handler
-async function leaveHandler(agent) {
-  console.log('leaveHandler');
-  const { body } = agent.request_;
-  const { data } = body.originalDetectIntentRequest.payload;
-  const { name } = body.queryResult.parameters;
-
-  agent.add('Name: ' + name);
+      agent.add('Name: ' + name);
+    } catch (err) {
+      agent.add(err.message);
+      next(err);
+    }
+  };
 }
 
 const replyText = (token, texts) => {
