@@ -1,20 +1,37 @@
 'use strict';
 
-const _ = require('lodash');
-const line = require('@line/bot-sdk');
 const { WebhookClient, Payload } = require('dialogflow-fulfillment');
-const { Card, Suggestion } = require('dialogflow-fulfillment');
 const intent = require('../utils/intentHandler');
-
-let config = {
-  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
-  channelSecret: process.env.CHANNEL_SECRET
-};
-
-const client = new line.Client(config);
 
 exports.helloWorld = (req, res, next) => {
   res.send('Hello World!');
+};
+
+exports.ensureToken = async (req, res, next) => {
+  const bearerHeader = req.headers['authorization'];
+  if (typeof bearerHeader !== 'undefined') {
+    const bearer = bearerHeader.split(' ');
+    const bearerToken = bearer[1];
+    req.token = bearerToken;
+    next();
+  } else {
+    next(new Error('No token'));
+  }
+};
+
+exports.authorization = async (req, res, next) => {
+  try {
+    //decode token using base64 decoder
+    let buff = Buffer.from(req.token, 'base64');
+    let key = buff.toString('ascii');
+
+    var [username, password] = key.split(':');
+    if (username === 'admin' && password === 'admin') {
+      next();
+    } else throw new Error('incorrect username or password');
+  } catch (err) {
+    next(err);
+  }
 };
 
 //Dialogflow webhook
@@ -35,15 +52,3 @@ exports.webhook = async (req, res, next) => {
     next(err);
   }
 };
-
-exports.authorization = async (req, res, next) => {
-  console.log('authorization');
-  try {
-    console.log(req.headers)
-    next()
-  } catch (err) {
-    next(err);
-  }
-};
-
-
