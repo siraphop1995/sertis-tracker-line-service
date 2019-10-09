@@ -5,6 +5,6 @@ module.exports = {
     middlewares: ['helloWorld']
   },
   'POST /webhook': {
-    middlewares: ['webhook']
+    middlewares: ['authorization', 'webhook']
   }
 };
