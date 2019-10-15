@@ -1,10 +1,11 @@
-const User = require('../models/userListModel');
 const line = require('@line/bot-sdk');
+const axios = require('axios');
 
 let config = {
   channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.CHANNEL_SECRET
 };
+const { USER_SERVER } = process.env;
 
 const client = new line.Client(config);
 
@@ -51,19 +52,23 @@ function initialize(next) {
     const { body } = agent.request_;
     const { data } = body.originalDetectIntentRequest.payload;
     try {
-      let newUser = new User({
+      let newUser = {
         lineId: data.source.userId,
         employeeId: '123456',
         firstName: 'Siraphop',
         lastName: 'Amo',
         nickName: 'Champ'
-      });
-      await newUser.save();
+      };
 
-      console.log(newUser);
+      const newRes = await axios.post(USER_SERVER + '/user', newUser);
+      console.log(newRes.data);
+
       agent.add('Account created successfully');
     } catch (err) {
-      if (err.code === 11000) {
+      //Check if error come from axios, if it does, convert it
+      err = err.response ? err.response.data.error : err;
+
+      if (err.code === 400) {
         const profile = await client.getProfile(data.source.userId);
         agent.add(profile.displayName + ' account is already initialize');
       } else {
@@ -105,16 +110,13 @@ function leaveHandler(next) {
   };
 }
 
-function replyText(token, texts){
+function replyText(token, texts) {
   texts = Array.isArray(texts) ? texts : [texts];
   return client.replyMessage(
     token,
     texts.map(text => ({ type: 'text', text }))
   );
-};
-
-
-
+}
 
 module.exports = {
   defaultAction,

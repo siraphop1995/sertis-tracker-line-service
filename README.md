@@ -1,7 +1,7 @@
 # Sertis Tracker Line Service (Prototype)
 
-> Heroku: `https://stt-line-service.herokuapp.com/`
-> Github: `https://github.com/siraphop1995/sertis-tracker-line-service`
+1. Heroku: `https://stt-line-service.herokuapp.com/`
+2. Github: `https://github.com/siraphop1995/sertis-tracker-line-service`
 
 ## <a name="contents"></a> Contents
  - [Dependencies](#dependencies)
@@ -36,12 +36,12 @@ npm install --save
 Used following local setting for `.env` file:  
 ```
 PORT=7001
-MONGO_URL=mongodb://localhost:27017/line
+MONGO_URL=mongodb://localhost:27017/stt
 ```
 ## <a name="usage"></a> Usage
 Test server locally
 ```
-npm start
+npm run start:dev
 ```
 
 Routes:
