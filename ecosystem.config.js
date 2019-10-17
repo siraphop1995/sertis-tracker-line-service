@@ -7,7 +7,7 @@ module.exports = {
         PORT: 7003,
         NODE_ENV: 'development',
         USER_SERVER: 'http://localhost:7001',
-        TIME_SERVER: 'http://localhost:7002',
+        DATE_SERVER: 'http://localhost:7002',
       },
       env_production: {
         PORT: 7003,

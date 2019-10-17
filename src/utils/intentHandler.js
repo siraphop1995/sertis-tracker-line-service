@@ -100,9 +100,32 @@ function leaveHandler(next) {
     console.log('leaveHandler');
     try {
       const { body } = agent.request_;
-      const { name } = body.queryResult.parameters;
+      const {
+        action,
+        timePeriod,
+        time,
+        timeType,
+        particle
+      } = body.queryResult.parameters;
+      console.log(body.queryResult.parameters);
+      console.log(action, timePeriod, particle);
+      agent.add(`${action} ${timePeriod} ${time} ${timeType} ${particle}`);
+      if (timePeriod === 'morning') {
+      } else if (timePeriod === 'afternoon') {
+      }
+    } catch (err) {
+      agent.add(err.message);
+      next(err);
+    }
+  };
+}
 
-      agent.add('Name: ' + name);
+//Absent Intent handler
+function absentHandler(next) {
+  return async agent => {
+    console.log('absentHandler');
+    try {
+      agent.add('absentHandler');
     } catch (err) {
       agent.add(err.message);
       next(err);
