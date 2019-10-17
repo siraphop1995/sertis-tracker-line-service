@@ -72,7 +72,7 @@ function initialize(next) {
         const profile = await client.getProfile(data.source.userId);
         agent.add(profile.displayName + ' account is already initialize');
       } else {
-        agent.add(err.message);
+        agent.add(`Error: ${err.message}`);
       }
       next(err);
     }
@@ -88,7 +88,7 @@ function checkLineId(next) {
     try {
       agent.add('LINE ID: ' + data.source.userId);
     } catch (err) {
-      agent.add(err.message);
+      agent.add(`Error: ${err.message}`);
       next(err);
     }
   };
@@ -104,17 +104,14 @@ function leaveHandler(next) {
         action,
         timePeriod,
         time,
-        timeType,
-        particle
+        timeType
       } = body.queryResult.parameters;
-      console.log(body.queryResult.parameters);
-      console.log(action, timePeriod, particle);
-      agent.add(`${action} ${timePeriod} ${time} ${timeType} ${particle}`);
+      agent.add(`${action} ${timePeriod} ${time} ${timeType}`);
       if (timePeriod === 'morning') {
       } else if (timePeriod === 'afternoon') {
       }
     } catch (err) {
-      agent.add(err.message);
+      agent.add(`Error: ${err.message}`);
       next(err);
     }
   };
@@ -125,9 +122,26 @@ function absentHandler(next) {
   return async agent => {
     console.log('absentHandler');
     try {
-      agent.add('absentHandler');
+      const { body } = agent.request_;
+      const { action, date, dateType } = body.queryResult.parameters;
+      agent.add(`absent ${action} ${date} ${dateType}`);
     } catch (err) {
-      agent.add(err.message);
+      agent.add(`Error: ${err.message}`);
+      next(err);
+    }
+  };
+}
+
+//Long Absent Intent handler
+function longAbsentHandler(next) {
+  return async agent => {
+    console.log('longAbsentHandler');
+    try {
+      const { body } = agent.request_;
+      const { action, date, dateType } = body.queryResult.parameters;
+      agent.add(`longAbsentHandler`);
+    } catch (err) {
+      agent.add(`Error: ${err.message}`);
       next(err);
     }
   };
@@ -145,5 +159,7 @@ module.exports = {
   defaultAction,
   initialize,
   checkLineId,
-  leaveHandler
+  leaveHandler,
+  absentHandler,
+  longAbsentHandler
 };

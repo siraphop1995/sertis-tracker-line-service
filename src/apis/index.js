@@ -40,6 +40,7 @@ exports.webhook = async (req, res, next) => {
   intentMap.set('Check ID Intent', intent.checkLineId(next));
   intentMap.set('Leave Intent', intent.leaveHandler(next));
   intentMap.set('Absent Intent', intent.absentHandler(next));
+  intentMap.set('Long Absent Intent', intent.longAbsentHandler(next));
 
   await agent.handleRequest(intentMap);
 };
