@@ -22,7 +22,7 @@ const hooks = {
   // for post hooks, the header style is `function (doc) {}`
   post: {
     save: function (doc) {
-      process.stdout.write(`Date '${doc.line}' was added`)
+      process.stdout.write(`Date '${doc.date}' was added`)
     }
   }
 }
