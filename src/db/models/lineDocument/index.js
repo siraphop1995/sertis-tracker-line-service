@@ -17,7 +17,12 @@ const lineSchema = mongoose.Schema(
     history: [
       {
         lineId: {
-          type: String
+          type: String,
+          require: true
+        },
+        employeeId: {
+          type: String,
+          require: true
         },
         displayName: {
           type: String
@@ -25,11 +30,19 @@ const lineSchema = mongoose.Schema(
         message: {
           type: String
         },
-        messageType: {
+        messageIntent: {
           type: String
         },
         messageVar: {
           type: Object
+        },
+        status: {
+          type: String,
+          default: 'accept'
+        },
+        timestamp: {
+          type: Number,
+          default: Date.now
         }
       }
     ],

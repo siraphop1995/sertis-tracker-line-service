@@ -10,7 +10,8 @@ port = process.env.PORT || 3000;
 mongoose.Promise = require('bluebird');
 const mongooseConfig = {
   useNewUrlParser: true,
-  useCreateIndex: true
+  useCreateIndex: true,
+  useFindAndModify: false
 };
 mongoose.connect(process.env.MONGO_URL, mongooseConfig, error => {
   if (error) throw error;

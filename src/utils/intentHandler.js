@@ -1,5 +1,6 @@
 const line = require('@line/bot-sdk');
 const axios = require('axios');
+const Line = require('../db').lineDocument;
 
 let config = {
   channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
@@ -64,6 +65,13 @@ function initialize(next) {
       console.log(newRes.data);
 
       agent.add('Account created successfully');
+
+      const message = {
+        lineId: data.source.userId,
+        message: body.queryResult.queryText,
+        messageIntent: 'initializeIntent'
+      };
+      saveHistory(message);
     } catch (err) {
       //Check if error come from axios, if it does, convert it
       err = err.response ? err.response.data.error : err;
@@ -106,11 +114,16 @@ function leaveHandler(next) {
         time,
         timeType
       } = body.queryResult.parameters;
-      console.log(body.queryResult.parameters);
+      const { data } = body.originalDetectIntentRequest.payload;
       agent.add(`${action} ${timePeriod} ${time} ${timeType}`);
-      if (timePeriod === 'morning') {
-      } else if (timePeriod === 'afternoon') {
-      }
+
+      const message = {
+        lineId: data.source.userId,
+        message: body.queryResult.queryText,
+        messageIntent: 'leaveIntent',
+        messageVar: body.queryResult.parameters
+      };
+      saveHistory(message);
     } catch (err) {
       agent.add(`Error: ${err.message}`);
       next(err);
@@ -125,7 +138,16 @@ function absentHandler(next) {
     try {
       const { body } = agent.request_;
       const { action, time, timeType } = body.queryResult.parameters;
+      const { data } = body.originalDetectIntentRequest.payload;
       agent.add(`absent ${action} ${time} ${timeType}`);
+
+      const message = {
+        lineId: data.source.userId,
+        message: body.queryResult.queryText,
+        messageIntent: 'absentIntent',
+        messageVar: body.queryResult.parameters
+      };
+      saveHistory(message);
     } catch (err) {
       agent.add(`Error: ${err.message}`);
       next(err);
@@ -140,12 +162,21 @@ function longAbsentHandler(next) {
     try {
       const { body } = agent.request_;
       let { action, startDate, endDate } = body.queryResult.parameters;
+      const { data } = body.originalDetectIntentRequest.payload;
       console.log(body.queryResult.parameters);
       if (endDate) {
         agent.add(`${action} ${startDate} - ${endDate}`);
       } else {
         agent.add(`${action} ${startDate}`);
       }
+
+      const message = {
+        lineId: data.source.userId,
+        message: body.queryResult.queryText,
+        messageIntent: 'longAbsentIntent',
+        messageVar: body.queryResult.parameters
+      };
+      saveHistory(message);
     } catch (err) {
       agent.add(`Error: ${err.message}`);
       next(err);
@@ -159,6 +190,46 @@ function replyText(token, texts) {
     token,
     texts.map(text => ({ type: 'text', text }))
   );
+}
+
+async function saveHistory(message) {
+  const profile = await client.getProfile(message.lineId);
+  const { employeeId } = (await axios.get(
+    `${USER_SERVER}/getEmployeeId/${message.lineId}`
+  )).data;
+  message.displayName = profile.displayName;
+  message.employeeId = employeeId;
+
+  console.log(employeeId);
+  const newDate = new Date();
+  const newYear = newDate.getFullYear();
+  const newMonth = newDate.getMonth();
+  const newDay = newDate.getDate();
+
+  const date = await Line.findOne({
+    date: {
+      $gte: new Date(newYear, newMonth, newDay),
+      $lt: new Date(newYear, newMonth, newDay + 1)
+    }
+  });
+
+  if (!date) {
+    let newLine = new Line({
+      date: new Date(),
+      history: []
+    });
+    newLine.history.push(message);
+    await newLine.save();
+  } else {
+    await Line.findOneAndUpdate(
+      { _id: date._id },
+      {
+        $push: {
+          history: message
+        }
+      }
+    );
+  }
 }
 
 module.exports = {
