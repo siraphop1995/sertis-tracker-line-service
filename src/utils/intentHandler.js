@@ -5,7 +5,7 @@ let config = {
   channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.CHANNEL_SECRET
 };
-const { USER_SERVER } = process.env;
+const { USER_SERVER, DATE_SERVER } = process.env;
 
 const client = new line.Client(config);
 
@@ -106,6 +106,7 @@ function leaveHandler(next) {
         time,
         timeType
       } = body.queryResult.parameters;
+      console.log(body.queryResult.parameters);
       agent.add(`${action} ${timePeriod} ${time} ${timeType}`);
       if (timePeriod === 'morning') {
       } else if (timePeriod === 'afternoon') {
@@ -123,8 +124,8 @@ function absentHandler(next) {
     console.log('absentHandler');
     try {
       const { body } = agent.request_;
-      const { action, date, dateType } = body.queryResult.parameters;
-      agent.add(`absent ${action} ${date} ${dateType}`);
+      const { action, time, timeType } = body.queryResult.parameters;
+      agent.add(`absent ${action} ${time} ${timeType}`);
     } catch (err) {
       agent.add(`Error: ${err.message}`);
       next(err);
@@ -138,8 +139,13 @@ function longAbsentHandler(next) {
     console.log('longAbsentHandler');
     try {
       const { body } = agent.request_;
-      const { action, date, dateType } = body.queryResult.parameters;
-      agent.add(`longAbsentHandler`);
+      let { action, startDate, endDate } = body.queryResult.parameters;
+      console.log(body.queryResult.parameters);
+      if (endDate) {
+        agent.add(`${action} ${startDate} - ${endDate}`);
+      } else {
+        agent.add(`${action} ${startDate}`);
+      }
     } catch (err) {
       agent.add(`Error: ${err.message}`);
       next(err);

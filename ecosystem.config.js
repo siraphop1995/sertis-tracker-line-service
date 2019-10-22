@@ -6,12 +6,15 @@ module.exports = {
       env: {
         PORT: 7003,
         NODE_ENV: 'development',
+        MONGO_URL: 'mongodb://localhost:27017/line',
         USER_SERVER: 'http://localhost:7001',
         DATE_SERVER: 'http://localhost:7002',
       },
       env_production: {
         PORT: 7003,
         NODE_ENV: 'production',
+        MONGO_URL:
+          'mongodb+srv://admin:admin@cluster0-mnunz.gcp.mongodb.net/line?retryWrites=true&w=majority'
       }
     }
   ].map(service => {
