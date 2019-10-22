@@ -2,6 +2,7 @@
 
 const { WebhookClient, Payload } = require('dialogflow-fulfillment');
 const intent = require('../utils/intentHandler');
+const Line = require('../db').lineDocument;
 
 exports.helloWorld = (req, res, next) => {
   res.send('Hello World!');
@@ -43,4 +44,44 @@ exports.webhook = async (req, res, next) => {
   intentMap.set('Long Absent Intent', intent.longAbsentHandler(next));
 
   await agent.handleRequest(intentMap);
+};
+
+exports.getAllLine = async (req, res) => {
+  console.log('getAllLines');
+  const line = await Line.find({}, null);
+  res.json(line);
+};
+
+exports.addLine = async (req, res) => {
+  console.log('addLine');
+  let newDate = new Line(req.body);
+  const line = await newDate.save();
+  res.json(line);
+};
+
+exports.getLine = async (req, res) => {
+  console.log('getLine');
+  const line = await Line.findOne({ _id: req.params.lineId });
+  res.json(line);
+};
+
+exports.updatw = async (req, res) => {
+  console.log('uplineLine');
+  let newLine = req.body;
+  const line = await Line.uplineOne({ _id: req.params.lineId }, newLine);
+  res.json(line);
+};
+
+exports.deleteLine = async (req, res) => {
+  console.log('deleteLine');
+  const line = await Line.deleteOne({ _id: req.params.lineId });
+  let message = 'No line remove';
+  if (line.deletedCount >= 1) {
+    message = 'Delete line id: ' + req.params.lineId + ' successfully';
+  }
+  const response = {
+    message: message,
+    id: line._id
+  };
+  res.json(response);
 };
