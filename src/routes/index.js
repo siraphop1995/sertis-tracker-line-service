@@ -7,19 +7,19 @@ module.exports = {
   'POST /webhook': {
     middlewares: ['ensureToken', 'authorization', 'webhook']
   },
-  'GET /line': {
+  'GET /getAllLine': {
     middlewares: ['getAllLine']
   },
-  'POST /line': {
+  'POST /addLine': {
     middlewares: ['addLine']
   },
-  'GET /line/:lineId': {
-    middlewares: ['getLine']
+  'GET /findLineById/:lineId': {
+    middlewares: ['findLineById']
   },
-  'PATCH /line/:lineId': {
-    middlewares: ['uplineLine']
+  'PATCH /updateLine/:lineId': {
+    middlewares: ['updateLine']
   },
-  'DELETE /line/:lineId': {
+  'DELETE /deleteLine/:lineId': {
     middlewares: ['deleteLine']
   },
 };

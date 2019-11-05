@@ -36,9 +36,15 @@ const lineSchema = mongoose.Schema(
         messageVar: {
           type: Object
         },
+        messageObjective: {
+          type: Object
+        },
         status: {
           type: String,
-          default: 'accept'
+          default: 'unknown'
+        },
+        rejectMessage: {
+          type: String
         },
         timestamp: {
           type: Number,

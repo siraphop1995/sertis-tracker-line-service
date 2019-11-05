@@ -47,29 +47,53 @@ exports.webhook = async (req, res, next) => {
 };
 
 exports.getAllLine = async (req, res) => {
-  console.log('getAllLines');
-  const line = await Line.find({}, null);
-  res.json(line);
+  console.log('getAllLine');
+  const lineRes = await Line.find({}, null);
+  res.json({
+    line: lineRes
+  });
 };
 
 exports.addLine = async (req, res) => {
   console.log('addLine');
-  let newDate = new Line(req.body);
-  const line = await newDate.save();
-  res.json(line);
+  let newLine = new Line(req.body);
+  const lineRes = await newLine.save();
+  res.json({
+    line: lineRes
+  });
 };
 
-exports.getLine = async (req, res) => {
+exports.findLineById = async (req, res) => {
   console.log('getLine');
-  const line = await Line.findOne({ _id: req.params.lineId });
-  res.json(line);
+  const lineRes = await Line.findOne({ _id: req.params.lineId });
+  res.json({
+    line: lineRes
+  });
 };
 
-exports.updatw = async (req, res) => {
-  console.log('uplineLine');
+exports.findLine = async (req, res) => {
+  const { dateQuery } = req.body;
+  const [day, month, year] = _parseDate(dateQuery);
+
+  const lineRes = await Line.findOne({
+    date: {
+      $gte: moment([year, month - 1, day]),
+      $lt: moment([year, month - 1, day + 1])
+    }
+  });
+
+  res.json({
+    line: lineRes
+  });
+};
+
+exports.updateLine = async (req, res) => {
+  console.log('updateLine');
   let newLine = req.body;
-  const line = await Line.uplineOne({ _id: req.params.lineId }, newLine);
-  res.json(line);
+  const lineRes = await Line.uplineOne({ _id: req.params.lineId }, newLine);
+  res.json({
+    line: lineRes
+  });
 };
 
 exports.deleteLine = async (req, res) => {

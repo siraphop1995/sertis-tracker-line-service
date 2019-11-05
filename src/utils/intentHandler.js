@@ -51,31 +51,38 @@ function initialize(next) {
   return async agent => {
     console.log('initialize');
     const { body } = agent.request_;
+    const { employeeId, code } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
+    let status = 'unverify';
+    let rejectMessage = undefined;
     try {
-      let newUser = {
-        lineId: data.source.userId,
-        employeeId: '123456',
-        firstName: 'Siraphop',
-        lastName: 'Amo',
-        nickName: 'Champ'
+      const query = {
+        employeeId: employeeId
       };
+      const userRes = (await axios.post(`${USER_SERVER}/findUser`, query)).data;
+      if (!userRes) {
+        status = 'reject';
+        rejectMessage = `Unknown eId: ${employeeId}`;
+        agent.add(rejectMessage);
+        return;
+      }
 
-      const newRes = await axios.post(USER_SERVER + '/user', newUser);
-      console.log(newRes.data);
-
-      agent.add('Account created successfully');
-
-      const message = {
-        lineId: data.source.userId,
-        message: body.queryResult.queryText,
-        messageIntent: 'initializeIntent'
-      };
-      saveHistory(message);
+      if (code == userRes.initCode) {
+        await axios.patch(`${USER_SERVER}/updateUser/${userRes._id}`, {
+          lineId: data.source.userId
+        });
+        status = 'verify';
+        agent.add('Account created successfully');
+      } else {
+        status = 'reject';
+        rejectMessage = `Incorrect init code for eID: ${employeeId}`;
+        agent.add(rejectMessage);
+      }
     } catch (err) {
+      status = 'reject';
+      rejectMessage = err.message;
       //Check if error come from axios, if it does, convert it
       err = err.response ? err.response.data.error : err;
-
       if (err.code === 400) {
         const profile = await client.getProfile(data.source.userId);
         agent.add(profile.displayName + ' account is already initialize');
@@ -83,6 +90,14 @@ function initialize(next) {
         agent.add(`Error: ${err.message}`);
       }
       next(err);
+    } finally {
+      saveHistory({
+        status: status,
+        rejectMessage: rejectMessage,
+        lineId: data.source.userId,
+        message: body.queryResult.queryText,
+        messageIntent: 'initializeIntent'
+      });
     }
   };
 }
@@ -106,27 +121,49 @@ function checkLineId(next) {
 function leaveHandler(next) {
   return async agent => {
     console.log('leaveHandler');
+    const { body } = agent.request_;
+    const { action, timePeriod, time, timeType } = body.queryResult.parameters;
+    const { data } = body.originalDetectIntentRequest.payload;
+    let status = 'unverify';
+    let rejectMessage = undefined;
+    let newMessageVar = body.queryResult.parameters;
+
     try {
-      const { body } = agent.request_;
-      const {
-        action,
-        timePeriod,
-        time,
-        timeType
-      } = body.queryResult.parameters;
-      const { data } = body.originalDetectIntentRequest.payload;
       agent.add(`${action} ${timePeriod} ${time} ${timeType}`);
 
-      const message = {
+      //Create a new message variable and if not input time, set default to 4
+
+      if (action !== 'leave' || timeType !== 'hour') {
+        status = 'reject';
+        rejectMessage = 'Unknown format';
+        return;
+      }
+      status = 'verify';
+      if (time === '') {
+        if (timePeriod === 'morning' || 'afternoon') {
+          newMessageVar.time = 4;
+        } else {
+          newMessageVar.time = undefined;
+          status = 'reject';
+          rejectMessage = 'Unknown time period';
+        }
+      }
+      newMessageVar.time = parseInt(newMessageVar.time, 10);
+    } catch (err) {
+      status = 'reject';
+      rejectMessage = err.message;
+      agent.add(`Error: ${err.message}`);
+      next(err);
+    } finally {
+      console.log('after');
+      saveHistory({
+        status: status,
+        rejectMessage: rejectMessage,
         lineId: data.source.userId,
         message: body.queryResult.queryText,
         messageIntent: 'leaveIntent',
-        messageVar: body.queryResult.parameters
-      };
-      saveHistory(message);
-    } catch (err) {
-      agent.add(`Error: ${err.message}`);
-      next(err);
+        messageVar: newMessageVar
+      });
     }
   };
 }
@@ -135,22 +172,33 @@ function leaveHandler(next) {
 function absentHandler(next) {
   return async agent => {
     console.log('absentHandler');
+    const { body } = agent.request_;
+    const { action, timePeriod, time, timeType } = body.queryResult.parameters;
+    const { data } = body.originalDetectIntentRequest.payload;
+    let status = 'unverify';
+    let rejectMessage = undefined;
+    let newMessageVar = body.queryResult.parameters;
+
     try {
-      const { body } = agent.request_;
-      const { action, time, timeType } = body.queryResult.parameters;
-      const { data } = body.originalDetectIntentRequest.payload;
       agent.add(`absent ${action} ${time} ${timeType}`);
 
-      const message = {
+      status = time === '' ? 'reject' : 'verify';
+      rejectMessage = time === '' ? 'Unknown time' : undefined;
+      newMessageVar.time = parseInt(newMessageVar.time, 10);
+    } catch (err) {
+      status = 'reject';
+      rejectMessage = err.message;
+      agent.add(`Error: ${err.message}`);
+      next(err);
+    } finally {
+      saveHistory({
+        status: status,
+        rejectMessage: rejectMessage,
         lineId: data.source.userId,
         message: body.queryResult.queryText,
         messageIntent: 'absentIntent',
-        messageVar: body.queryResult.parameters
-      };
-      saveHistory(message);
-    } catch (err) {
-      agent.add(`Error: ${err.message}`);
-      next(err);
+        messageVar: newMessageVar
+      });
     }
   };
 }
