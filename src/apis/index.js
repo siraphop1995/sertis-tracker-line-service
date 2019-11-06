@@ -3,6 +3,7 @@
 const { WebhookClient, Payload } = require('dialogflow-fulfillment');
 const intent = require('../utils/intentHandler');
 const Line = require('../db').lineDocument;
+const moment = require('moment-timezone');
 
 exports.helloWorld = (req, res, next) => {
   res.send('Hello World!');
@@ -75,11 +76,12 @@ exports.findLine = async (req, res) => {
   const { dateQuery } = req.body;
   const [day, month, year] = _parseDate(dateQuery);
 
+  const newDate = moment([year, month - 1, day])
+    .tz('Asia/Bangkok')
+    .format('DD/MM/YYYY');
+
   const lineRes = await Line.findOne({
-    date: {
-      $gte: moment([year, month - 1, day]),
-      $lt: moment([year, month - 1, day + 1])
-    }
+    date: newDate
   });
 
   res.json({
@@ -109,3 +111,8 @@ exports.deleteLine = async (req, res) => {
   };
   res.json(response);
 };
+
+
+function _parseDate(date) {
+  return date.split('/').map(d => parseInt(d, 10));
+}

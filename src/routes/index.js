@@ -16,6 +16,9 @@ module.exports = {
   'GET /findLineById/:lid': {
     middlewares: ['findLineById']
   },
+  'POST /findLine': {
+    middlewares: ['findLine']
+  },
   'PATCH /updateLine/:lid': {
     middlewares: ['updateLine']
   },

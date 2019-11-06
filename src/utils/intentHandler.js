@@ -276,7 +276,7 @@ async function saveHistory(message, agent, next) {
       .tz('Asia/Bangkok')
       .format('DD/MM/YYYY');
 
-    newDate = '10/10/2019';
+    newDate = '09/10/2019';
     console.log(newDate);
     const date = await Line.findOne({
       date: newDate
