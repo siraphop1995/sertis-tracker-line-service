@@ -65,7 +65,7 @@ exports.addLine = async (req, res) => {
 
 exports.findLineById = async (req, res) => {
   console.log('getLine');
-  const lineRes = await Line.findOne({ _id: req.params.lineId });
+  const lineRes = await Line.findOne({ _id: req.params.lid });
   res.json({
     line: lineRes
   });
@@ -90,7 +90,7 @@ exports.findLine = async (req, res) => {
 exports.updateLine = async (req, res) => {
   console.log('updateLine');
   let newLine = req.body;
-  const lineRes = await Line.uplineOne({ _id: req.params.lineId }, newLine);
+  const lineRes = await Line.uplineOne({ _id: req.params.lid }, newLine);
   res.json({
     line: lineRes
   });
@@ -98,10 +98,10 @@ exports.updateLine = async (req, res) => {
 
 exports.deleteLine = async (req, res) => {
   console.log('deleteLine');
-  const line = await Line.deleteOne({ _id: req.params.lineId });
+  const line = await Line.deleteOne({ _id: req.params.lid });
   let message = 'No line remove';
   if (line.deletedCount >= 1) {
-    message = 'Delete line id: ' + req.params.lineId + ' successfully';
+    message = 'Delete line id: ' + req.params.lid + ' successfully';
   }
   const response = {
     message: message,

@@ -13,13 +13,13 @@ module.exports = {
   'POST /addLine': {
     middlewares: ['addLine']
   },
-  'GET /findLineById/:lineId': {
+  'GET /findLineById/:lid': {
     middlewares: ['findLineById']
   },
-  'PATCH /updateLine/:lineId': {
+  'PATCH /updateLine/:lid': {
     middlewares: ['updateLine']
   },
-  'DELETE /deleteLine/:lineId': {
+  'DELETE /deleteLine/:lid': {
     middlewares: ['deleteLine']
   },
 };

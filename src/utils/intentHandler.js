@@ -1,6 +1,7 @@
 const line = require('@line/bot-sdk');
 const axios = require('axios');
 const Line = require('../db').lineDocument;
+const moment = require('moment-timezone');
 
 let config = {
   channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
@@ -51,31 +52,31 @@ function initialize(next) {
   return async agent => {
     console.log('initialize');
     const { body } = agent.request_;
-    const { employeeId, code } = body.queryResult.parameters;
+    const { uid, code } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
     let status = 'unverify';
     let rejectMessage = undefined;
     try {
       const query = {
-        employeeId: employeeId
+        uid: uid
       };
       const userRes = (await axios.post(`${USER_SERVER}/findUser`, query)).data;
       if (!userRes) {
         status = 'reject';
-        rejectMessage = `Unknown eId: ${employeeId}`;
+        rejectMessage = `Unknown eId: ${uid}`;
         agent.add(rejectMessage);
         return;
       }
 
       if (code == userRes.initCode) {
         await axios.patch(`${USER_SERVER}/updateUser/${userRes._id}`, {
-          lineId: data.source.userId
+          lid: data.source.userId
         });
         status = 'verify';
         agent.add('Account created successfully');
       } else {
         status = 'reject';
-        rejectMessage = `Incorrect init code for eID: ${employeeId}`;
+        rejectMessage = `Incorrect init code for eID: ${uid}`;
         agent.add(rejectMessage);
       }
     } catch (err) {
@@ -91,13 +92,17 @@ function initialize(next) {
       }
       next(err);
     } finally {
-      saveHistory({
-        status: status,
-        rejectMessage: rejectMessage,
-        lineId: data.source.userId,
-        message: body.queryResult.queryText,
-        messageIntent: 'initializeIntent'
-      });
+      await saveHistory(
+        {
+          status: status,
+          rejectMessage: rejectMessage,
+          lid: data.source.userId,
+          message: body.queryResult.queryText,
+          messageIntent: 'initializeIntent'
+        },
+        agent,
+        next
+      );
     }
   };
 }
@@ -133,7 +138,7 @@ function leaveHandler(next) {
 
       //Create a new message variable and if not input time, set default to 4
 
-      if (action !== 'leave' || timeType !== 'hour') {
+      if (action !== 'leave') {
         status = 'reject';
         rejectMessage = 'Unknown format';
         return;
@@ -156,14 +161,18 @@ function leaveHandler(next) {
       next(err);
     } finally {
       console.log('after');
-      saveHistory({
-        status: status,
-        rejectMessage: rejectMessage,
-        lineId: data.source.userId,
-        message: body.queryResult.queryText,
-        messageIntent: 'leaveIntent',
-        messageVar: newMessageVar
-      });
+      await saveHistory(
+        {
+          status: status,
+          rejectMessage: rejectMessage,
+          lid: data.source.userId,
+          message: body.queryResult.queryText,
+          messageIntent: 'leaveIntent',
+          messageVar: newMessageVar
+        },
+        agent,
+        next
+      );
     }
   };
 }
@@ -173,12 +182,13 @@ function absentHandler(next) {
   return async agent => {
     console.log('absentHandler');
     const { body } = agent.request_;
-    const { action, timePeriod, time, timeType } = body.queryResult.parameters;
+    const { action, time, timeType } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
     let status = 'unverify';
     let rejectMessage = undefined;
     let newMessageVar = body.queryResult.parameters;
 
+    console.log(newMessageVar)
     try {
       agent.add(`absent ${action} ${time} ${timeType}`);
 
@@ -191,14 +201,18 @@ function absentHandler(next) {
       agent.add(`Error: ${err.message}`);
       next(err);
     } finally {
-      saveHistory({
-        status: status,
-        rejectMessage: rejectMessage,
-        lineId: data.source.userId,
-        message: body.queryResult.queryText,
-        messageIntent: 'absentIntent',
-        messageVar: newMessageVar
-      });
+      await saveHistory(
+        {
+          status: status,
+          rejectMessage: rejectMessage,
+          lid: data.source.userId,
+          message: body.queryResult.queryText,
+          messageIntent: 'absentIntent',
+          messageVar: newMessageVar
+        },
+        agent,
+        next
+      );
     }
   };
 }
@@ -219,12 +233,12 @@ function longAbsentHandler(next) {
       }
 
       const message = {
-        lineId: data.source.userId,
+        lid: data.source.userId,
         message: body.queryResult.queryText,
         messageIntent: 'longAbsentIntent',
         messageVar: body.queryResult.parameters
       };
-      saveHistory(message);
+      await saveHistory(message, agent, next);
     } catch (err) {
       agent.add(`Error: ${err.message}`);
       next(err);
@@ -240,43 +254,54 @@ function replyText(token, texts) {
   );
 }
 
-async function saveHistory(message) {
-  const profile = await client.getProfile(message.lineId);
-  const { employeeId } = (await axios.get(
-    `${USER_SERVER}/getEmployeeId/${message.lineId}`
-  )).data;
-  message.displayName = profile.displayName;
-  message.employeeId = employeeId;
+async function saveHistory(message, agent, next) {
+  try {
+    const profile = await client.getProfile(message.lid);
 
-  console.log(employeeId);
-  const newDate = new Date();
-  const newYear = newDate.getFullYear();
-  const newMonth = newDate.getMonth();
-  const newDay = newDate.getDate();
+    const { uid } = (await axios.get(
+      `${USER_SERVER}/getEmployeeId/${message.lid}`
+    )).data;
 
-  const date = await Line.findOne({
-    date: {
-      $gte: new Date(newYear, newMonth, newDay),
-      $lt: new Date(newYear, newMonth, newDay + 1)
-    }
-  });
+    if (!uid) throw new Error('User not found');
+    message.displayName = profile.displayName;
+    message.uid = uid;
 
-  if (!date) {
-    let newLine = new Line({
-      date: new Date(),
-      history: []
+    const users = (await axios.get(`${USER_SERVER}/getAllUsers`)).data;
+
+    const r = Math.floor(Math.random() * users.length);
+    message.uid = users[r].uid;
+    message.lid = users[r].lid;
+
+    let newDate = moment()
+      .tz('Asia/Bangkok')
+      .format('DD/MM/YYYY');
+
+    newDate = '10/10/2019';
+    console.log(newDate);
+    const date = await Line.findOne({
+      date: newDate
     });
-    newLine.history.push(message);
-    await newLine.save();
-  } else {
-    await Line.findOneAndUpdate(
-      { _id: date._id },
-      {
-        $push: {
-          history: message
+
+    if (!date) {
+      let newLine = new Line({
+        date: newDate,
+        history: []
+      });
+      newLine.history.push(message);
+      await newLine.save();
+    } else {
+      await Line.findOneAndUpdate(
+        { _id: date._id },
+        {
+          $push: {
+            history: message
+          }
         }
-      }
-    );
+      );
+    }
+  } catch (err) {
+    agent.add(`Error: ${err.message}`);
+    next(err);
   }
 }
 

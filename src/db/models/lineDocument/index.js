@@ -11,16 +11,15 @@ const { hooks, methods, toJSON } = require('./functions');
 const lineSchema = mongoose.Schema(
   {
     date: {
-      type: Date,
-      default: Date.now
+      type: String
     },
     history: [
       {
-        lineId: {
+        lid: {
           type: String,
           require: true
         },
-        employeeId: {
+        uid: {
           type: String,
           require: true
         },
