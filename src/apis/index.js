@@ -55,10 +55,19 @@ exports.getAllLine = async (req, res) => {
   });
 };
 
-exports.addLine = async (req, res) => {
-  console.log('addLine');
-  let newLine = new Line(req.body);
+exports.createLine = async (req, res) => {
+  console.log('createLine');
+  const { dateQuery } = req.body;
+  const [day, month, year] = _parseDate(dateQuery);
+
+  let newDate = _createMoment(day, month, year);
+
+  let newLine = new Line({
+    date: newDate,
+    history: []
+  });
   const lineRes = await newLine.save();
+
   res.json({
     line: lineRes
   });
@@ -112,7 +121,12 @@ exports.deleteLine = async (req, res) => {
   res.json(response);
 };
 
-
 function _parseDate(date) {
   return date.split('/').map(d => parseInt(d, 10));
+}
+
+function _createMoment(day, month, year) {
+  return moment([year, month - 1, day])
+    .tz('Asia/Bangkok')
+    .format('DD/MM/YYYY');
 }

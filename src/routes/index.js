@@ -10,8 +10,8 @@ module.exports = {
   'GET /getAllLine': {
     middlewares: ['getAllLine']
   },
-  'POST /addLine': {
-    middlewares: ['addLine']
+  'POST /createLine': {
+    middlewares: ['createLine']
   },
   'GET /findLineById/:lid': {
     middlewares: ['findLineById']

@@ -38,9 +38,9 @@ const lineSchema = mongoose.Schema(
         messageObjective: {
           type: Object
         },
-        status: {
-          type: String,
-          default: 'unknown'
+        isVerify: {
+          type: Boolean,
+          default: false
         },
         rejectMessage: {
           type: String

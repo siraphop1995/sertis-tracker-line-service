@@ -54,7 +54,6 @@ function initialize(next) {
     const { body } = agent.request_;
     const { uid, code } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
-    let status = 'unverify';
     let rejectMessage = undefined;
     try {
       const query = {
@@ -62,7 +61,6 @@ function initialize(next) {
       };
       const userRes = (await axios.post(`${USER_SERVER}/findUser`, query)).data;
       if (!userRes) {
-        status = 'reject';
         rejectMessage = `Unknown eId: ${uid}`;
         agent.add(rejectMessage);
         return;
@@ -72,15 +70,13 @@ function initialize(next) {
         await axios.patch(`${USER_SERVER}/updateUser/${userRes._id}`, {
           lid: data.source.userId
         });
-        status = 'verify';
+        isVerify = true;
         agent.add('Account created successfully');
       } else {
-        status = 'reject';
         rejectMessage = `Incorrect init code for eID: ${uid}`;
         agent.add(rejectMessage);
       }
     } catch (err) {
-      status = 'reject';
       rejectMessage = err.message;
       //Check if error come from axios, if it does, convert it
       err = err.response ? err.response.data.error : err;
@@ -94,7 +90,7 @@ function initialize(next) {
     } finally {
       await saveHistory(
         {
-          status: status,
+          isVerify: isVerify,
           rejectMessage: rejectMessage,
           lid: data.source.userId,
           message: body.queryResult.queryText,
@@ -129,7 +125,6 @@ function leaveHandler(next) {
     const { body } = agent.request_;
     const { action, timePeriod, time, timeType } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
-    let status = 'unverify';
     let rejectMessage = undefined;
     let newMessageVar = body.queryResult.parameters;
 
@@ -139,23 +134,20 @@ function leaveHandler(next) {
       //Create a new message variable and if not input time, set default to 4
 
       if (action !== 'leave') {
-        status = 'reject';
         rejectMessage = 'Unknown format';
         return;
       }
-      status = 'verify';
+      isVerify = true;
       if (time === '') {
         if (timePeriod === 'morning' || 'afternoon') {
           newMessageVar.time = 4;
         } else {
           newMessageVar.time = undefined;
-          status = 'reject';
           rejectMessage = 'Unknown time period';
         }
       }
       newMessageVar.time = parseInt(newMessageVar.time, 10);
     } catch (err) {
-      status = 'reject';
       rejectMessage = err.message;
       agent.add(`Error: ${err.message}`);
       next(err);
@@ -163,7 +155,7 @@ function leaveHandler(next) {
       console.log('after');
       await saveHistory(
         {
-          status: status,
+          isVerify: isVerify,
           rejectMessage: rejectMessage,
           lid: data.source.userId,
           message: body.queryResult.queryText,
@@ -184,7 +176,6 @@ function absentHandler(next) {
     const { body } = agent.request_;
     const { action, time, timeType } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
-    let status = 'unverify';
     let rejectMessage = undefined;
     let newMessageVar = body.queryResult.parameters;
 
@@ -192,18 +183,17 @@ function absentHandler(next) {
     try {
       agent.add(`absent ${action} ${time} ${timeType}`);
 
-      status = time === '' ? 'reject' : 'verify';
+      isVerify = time === '' ? false : true;
       rejectMessage = time === '' ? 'Unknown time' : undefined;
       newMessageVar.time = parseInt(newMessageVar.time, 10);
     } catch (err) {
-      status = 'reject';
       rejectMessage = err.message;
       agent.add(`Error: ${err.message}`);
       next(err);
     } finally {
       await saveHistory(
         {
-          status: status,
+          isVerify: isVerify,
           rejectMessage: rejectMessage,
           lid: data.source.userId,
           message: body.queryResult.queryText,
@@ -276,7 +266,7 @@ async function saveHistory(message, agent, next) {
       .tz('Asia/Bangkok')
       .format('DD/MM/YYYY');
 
-    newDate = '09/10/2019';
+    newDate = '10/10/2019';
     console.log(newDate);
     const date = await Line.findOne({
       date: newDate
