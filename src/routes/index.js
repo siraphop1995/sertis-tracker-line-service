@@ -25,4 +25,7 @@ module.exports = {
   'DELETE /deleteLine/:lid': {
     middlewares: ['deleteLine']
   },
+  'DELETE /deleteAllLine': {
+    middlewares: ['deleteAllLine']
+  },
 };

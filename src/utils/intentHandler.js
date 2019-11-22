@@ -2,6 +2,7 @@ const line = require('@line/bot-sdk');
 const axios = require('axios');
 const Line = require('../db').lineDocument;
 const moment = require('moment-timezone');
+const db = require('../utils/dbHandler');
 
 let config = {
   channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
@@ -55,21 +56,23 @@ function initialize(next) {
     const { uid, code } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
     let rejectMessage = undefined;
+    let isVerify = false;
     try {
-      const query = {
-        uid: uid
-      };
-      const userRes = (await axios.post(`${USER_SERVER}/findUser`, query)).data;
+      const userRes = await db.findUser(uid);
       if (!userRes) {
         rejectMessage = `Unknown eId: ${uid}`;
         agent.add(rejectMessage);
         return;
       }
 
+      console.log(code);
+      console.log(userRes);
+
       if (code == userRes.initCode) {
-        await axios.patch(`${USER_SERVER}/updateUser/${userRes._id}`, {
-          lid: data.source.userId
-        });
+        await db.updateUser(userRes._id, data.source.userId);
+        // axios.patch(`${USER_SERVER}/updateUser/${userRes._id}`, {
+        //   lid: data.source.userId
+        // });
         isVerify = true;
         agent.add('Account created successfully');
       } else {
@@ -154,6 +157,7 @@ function leaveHandler(next) {
     } finally {
       console.log('after');
       await saveHistory(
+        _createFormatMoment(),
         {
           isVerify: isVerify,
           rejectMessage: rejectMessage,
@@ -179,7 +183,7 @@ function absentHandler(next) {
     let rejectMessage = undefined;
     let newMessageVar = body.queryResult.parameters;
 
-    console.log(newMessageVar)
+    console.log(newMessageVar);
     try {
       agent.add(`absent ${action} ${time} ${timeType}`);
 
@@ -192,6 +196,7 @@ function absentHandler(next) {
       next(err);
     } finally {
       await saveHistory(
+        _createFormatMoment(),
         {
           isVerify: isVerify,
           rejectMessage: rejectMessage,
@@ -211,31 +216,42 @@ function absentHandler(next) {
 function longAbsentHandler(next) {
   return async agent => {
     console.log('longAbsentHandler');
+    const { body } = agent.request_;
+    let { action, startDate, endDate } = body.queryResult.parameters;
+    const { data } = body.originalDetectIntentRequest.payload;
+    const profile = await client.getProfile(data.source.userId);
+    let message = {
+      isVerify: true,
+      lid: data.source.userId,
+      displayName: profile.displayName,
+      rejectMessage: undefined,
+      message: body.queryResult.queryText,
+      messageIntent: 'longAbsentIntent',
+      messageVar: body.queryResult.parameters
+    };
     try {
-      const { body } = agent.request_;
-      let { action, startDate, endDate } = body.queryResult.parameters;
-      const { data } = body.originalDetectIntentRequest.payload;
-      console.log(body.queryResult.parameters);
       if (endDate) {
-        agent.add(`${action} ${startDate} - ${endDate}`);
+        agent.add(
+          `long ${action} ${startDate} - ${endDate} duration:${dateArr.length}`
+        );
+        const dateArr = _findDateInterval(startDate, endDate);
+        for (let i = 0; i < dateArr.length; i++) {
+          await saveHistory(dateArr[i], message, agent, next);
+        }
       } else {
-        agent.add(`${action} ${startDate}`);
+        agent.add(`long ${action} ${startDate}`);
+        await saveHistory(_createFormatMoment(startDate), message, agent, next);
       }
-
-      const message = {
-        lid: data.source.userId,
-        message: body.queryResult.queryText,
-        messageIntent: 'longAbsentIntent',
-        messageVar: body.queryResult.parameters
-      };
-      await saveHistory(message, agent, next);
     } catch (err) {
+      console.error(err);
+      message.isVerify = false;
+      message.rejectMessage = err.message;
+      await saveHistory(_createFormatMoment(startDate), message, agent, next);
       agent.add(`Error: ${err.message}`);
       next(err);
     }
   };
 }
-
 function replyText(token, texts) {
   texts = Array.isArray(texts) ? texts : [texts];
   return client.replyMessage(
@@ -244,30 +260,22 @@ function replyText(token, texts) {
   );
 }
 
-async function saveHistory(message, agent, next) {
+async function saveHistory(newDate, message, agent, next) {
   try {
-    const profile = await client.getProfile(message.lid);
-
-    const { uid } = (await axios.get(
-      `${USER_SERVER}/getEmployeeId/${message.lid}`
-    )).data;
+    const { uid } = (
+      await axios.get(`${USER_SERVER}/getEmployeeId/${message.lid}`)
+    ).data;
 
     if (!uid) throw new Error('User not found');
-    message.displayName = profile.displayName;
     message.uid = uid;
 
-    const users = (await axios.get(`${USER_SERVER}/getAllUsers`)).data;
-
+    const users = (await axios.get(`${USER_SERVER}/getAllUsers`)).data.user;
     const r = Math.floor(Math.random() * users.length);
     message.uid = users[r].uid;
     message.lid = users[r].lid;
 
-    let newDate = moment()
-      .tz('Asia/Bangkok')
-      .format('DD/MM/YYYY');
+    // // let newDate = '10/10/2019';
 
-    newDate = '10/10/2019';
-    console.log(newDate);
     const date = await Line.findOne({
       date: newDate
     });
@@ -290,9 +298,38 @@ async function saveHistory(message, agent, next) {
       );
     }
   } catch (err) {
-    agent.add(`Error: ${err.message}`);
+    agent.add(`Save to history failed. Error: ${err.message}`);
     next(err);
   }
+}
+
+function _createMoment(date) {
+  if (!date) return moment().tz('Asia/Bangkok');
+  else return moment(date).tz('Asia/Bangkok');
+}
+
+function _createFormatMoment(date) {
+  if (!date)
+    return moment()
+      .tz('Asia/Bangkok')
+      .format('DD/MM/YYYY');
+  else
+    return moment(date)
+      .tz('Asia/Bangkok')
+      .format('DD/MM/YYYY');
+}
+
+function _findDateInterval(startDate, endDate) {
+  startDate = _createMoment(startDate);
+  endDate = _createMoment(endDate);
+  const duration = moment.duration(endDate.diff(startDate)).asDays();
+  let dateArr = [];
+  let date = startDate;
+  for (let i = 0; i <= duration; i++) {
+    dateArr.push(_createFormatMoment(date));
+    date = date.add(1, 'days');
+  }
+  return dateArr;
 }
 
 module.exports = {

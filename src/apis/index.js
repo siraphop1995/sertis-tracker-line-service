@@ -121,6 +121,14 @@ exports.deleteLine = async (req, res) => {
   res.json(response);
 };
 
+exports.deleteAllLine = async (req, res) => {
+  console.log('deleteAllLine');
+  const line = await Line.deleteMany({ });
+  res.json(line);
+};
+
+
+
 function _parseDate(date) {
   return date.split('/').map(d => parseInt(d, 10));
 }
