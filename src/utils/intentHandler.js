@@ -155,7 +155,7 @@ function leaveHandler(next) {
       agent.add(`Error: ${err.message}`);
       next(err);
     } finally {
-      console.log('after');
+      const profile = await client.getProfile(data.source.userId);
       await saveHistory(
         _createFormatMoment(),
         {
@@ -164,7 +164,8 @@ function leaveHandler(next) {
           lid: data.source.userId,
           message: body.queryResult.queryText,
           messageIntent: 'leaveIntent',
-          messageVar: newMessageVar
+          messageVar: newMessageVar,
+          displayName: profile.displayName
         },
         agent,
         next
@@ -183,7 +184,6 @@ function absentHandler(next) {
     let rejectMessage = undefined;
     let newMessageVar = body.queryResult.parameters;
 
-    console.log(newMessageVar);
     try {
       agent.add(`absent ${action} ${time} ${timeType}`);
 
@@ -195,6 +195,8 @@ function absentHandler(next) {
       agent.add(`Error: ${err.message}`);
       next(err);
     } finally {
+      const profile = await client.getProfile(data.source.userId);
+
       await saveHistory(
         _createFormatMoment(),
         {
@@ -203,7 +205,8 @@ function absentHandler(next) {
           lid: data.source.userId,
           message: body.queryResult.queryText,
           messageIntent: 'absentIntent',
-          messageVar: newMessageVar
+          messageVar: newMessageVar,
+          displayName: profile.displayName
         },
         agent,
         next
