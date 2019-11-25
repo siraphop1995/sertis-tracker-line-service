@@ -234,10 +234,11 @@ function longAbsentHandler(next) {
     };
     try {
       if (endDate) {
+        const dateArr = _findDateInterval(startDate, endDate);
+
         agent.add(
           `long ${action} ${startDate} - ${endDate} duration:${dateArr.length}`
         );
-        const dateArr = _findDateInterval(startDate, endDate);
         for (let i = 0; i < dateArr.length; i++) {
           await saveHistory(dateArr[i], message, agent, next);
         }
@@ -276,8 +277,7 @@ async function saveHistory(newDate, message, agent, next) {
     const r = Math.floor(Math.random() * users.length);
     message.uid = users[r].uid;
     message.lid = users[r].lid;
-
-    // // let newDate = '10/10/2019';
+    message.uid = 'st011';
 
     const date = await Line.findOne({
       date: newDate

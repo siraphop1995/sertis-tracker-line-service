@@ -42,6 +42,10 @@ const lineSchema = mongoose.Schema(
           type: Boolean,
           default: false
         },
+        isCanceled: {
+          type: Boolean,
+          default: false
+        },
         rejectMessage: {
           type: String
         },
