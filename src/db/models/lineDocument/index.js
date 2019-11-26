@@ -6,6 +6,7 @@
  */
 
 const mongoose = require('mongoose');
+const moment = require('moment-timezone');
 const { hooks, methods, toJSON } = require('./functions');
 
 const lineSchema = mongoose.Schema(
@@ -52,6 +53,10 @@ const lineSchema = mongoose.Schema(
         timestamp: {
           type: Number,
           default: Date.now
+        },
+        createdDate: {
+          type: String,
+          default: moment().tz('Asia/Bangkok').format()
         }
       }
     ],
