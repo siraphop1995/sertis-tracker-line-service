@@ -254,10 +254,10 @@ async function saveHistory(newDate, message, agent, next) {
     if (!uid) throw new Error('User not found');
     message.uid = uid;
 
-    const users = await db.getUserList();
-    const r = Math.floor(Math.random() * users.length);
-    message.uid = users[r].uid;
-    message.lid = users[r].lid;
+    // const users = await db.getUserList();
+    // const r = Math.floor(Math.random() * users.length);
+    // message.uid = users[r].uid;
+    // message.lid = users[r].lid;
 
     const date = await Line.findOne({
       date: newDate
