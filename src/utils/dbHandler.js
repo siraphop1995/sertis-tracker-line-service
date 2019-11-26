@@ -29,7 +29,7 @@ updateUser = async (id, lineId) => {
 };
 
 getEmployeeId = async lineId => {
-  return (await axios.get(`${USER_SERVER}/getEmployeeId/${lineId}`)).data;
+  return (await axios.get(`${USER_SERVER}/getEmployeeId/${lineId}`)).data.uid;
 };
 
 module.exports = {

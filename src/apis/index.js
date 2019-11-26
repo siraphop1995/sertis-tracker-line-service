@@ -6,7 +6,8 @@ const Line = require('../db').lineDocument;
 const moment = require('moment-timezone');
 
 exports.helloWorld = (req, res, next) => {
-  res.send('Hello World!');
+  console.log('Hello World! line-service');
+  res.json({ message: 'Hello World! line-service' });
 };
 
 exports.ensureToken = async (req, res, next) => {
@@ -39,7 +40,6 @@ exports.webhook = async (req, res, next) => {
   var intentMap = new Map();
   intentMap.set('Default Fallback Intent', intent.defaultAction(next));
   intentMap.set('Initialize Intent', intent.initialize(next));
-  intentMap.set('Check ID Intent', intent.checkLineId(next));
   intentMap.set('Leave Intent', intent.leaveHandler(next));
   intentMap.set('Absent Intent', intent.absentHandler(next));
   intentMap.set('Long Absent Intent', intent.longAbsentHandler(next));
@@ -123,11 +123,9 @@ exports.deleteLine = async (req, res) => {
 
 exports.deleteAllLine = async (req, res) => {
   console.log('deleteAllLine');
-  const line = await Line.deleteMany({ });
+  const line = await Line.deleteMany({});
   res.json(line);
 };
-
-
 
 function _parseDate(date) {
   return date.split('/').map(d => parseInt(d, 10));

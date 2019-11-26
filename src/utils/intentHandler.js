@@ -1,5 +1,4 @@
 const line = require('@line/bot-sdk');
-const axios = require('axios');
 const Line = require('../db').lineDocument;
 const moment = require('moment-timezone');
 const db = require('../utils/dbHandler');
@@ -8,7 +7,6 @@ let config = {
   channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.CHANNEL_SECRET
 };
-const { USER_SERVER, DATE_SERVER } = process.env;
 
 const client = new line.Client(config);
 
@@ -42,7 +40,7 @@ function defaultAction(next) {
           return agent.add(fulfillmentText);
       }
     } catch (err) {
-      agent.add(err.message);
+      agent.add(`Error: ${err.message}`);
       next(err);
     }
   };
@@ -56,42 +54,30 @@ function initialize(next) {
     const { uid, code } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
     let rejectMessage = undefined;
-    let isVerify = false;
+    let isVerify = true;
     try {
       const userRes = await db.findUser(uid);
-      if (!userRes) {
-        rejectMessage = `Unknown eId: ${uid}`;
-        agent.add(rejectMessage);
-        return;
-      }
+      if (!userRes) throw new Error(`uid: {${uid}} not found`);
+      if (code != userRes.initCode)
+        throw new Error(`incorrect init code for uid {${uid}}`);
 
-      console.log(code);
-      console.log(userRes);
-
-      if (code == userRes.initCode) {
-        await db.updateUser(userRes._id, data.source.userId);
-        // axios.patch(`${USER_SERVER}/updateUser/${userRes._id}`, {
-        //   lid: data.source.userId
-        // });
-        isVerify = true;
-        agent.add('Account created successfully');
-      } else {
-        rejectMessage = `Incorrect init code for eID: ${uid}`;
-        agent.add(rejectMessage);
-      }
+      await db.updateUser(userRes._id, data.source.userId);
+      agent.add('Account created successfully');
     } catch (err) {
-      rejectMessage = err.message;
       //Check if error come from axios, if it does, convert it
       err = err.response ? err.response.data.error : err;
+      isVerify = false;
       if (err.code === 400) {
         const profile = await client.getProfile(data.source.userId);
-        agent.add(profile.displayName + ' account is already initialize');
+        rejectMessage = profile.displayName + ' account is already initialize';
       } else {
-        agent.add(`Error: ${err.message}`);
+        rejectMessage = err.message;
       }
+      agent.add(`Error: ${rejectMessage}`);
       next(err);
     } finally {
       await saveHistory(
+        _createMomentDate(),
         {
           isVerify: isVerify,
           rejectMessage: rejectMessage,
@@ -106,58 +92,49 @@ function initialize(next) {
   };
 }
 
-//Check ID Intent handler
-function checkLineId(next) {
-  return async agent => {
-    console.log('checkLineId');
-    const { body } = agent.request_;
-    const { data } = body.originalDetectIntentRequest.payload;
-    try {
-      agent.add('LINE ID: ' + data.source.userId);
-    } catch (err) {
-      agent.add(`Error: ${err.message}`);
-      next(err);
-    }
-  };
-}
-
 //Leave Intent handler
 function leaveHandler(next) {
   return async agent => {
     console.log('leaveHandler');
     const { body } = agent.request_;
-    const { action, timePeriod, time, timeType } = body.queryResult.parameters;
+    const {
+      specialIndicator,
+      action,
+      timePeriod,
+      time,
+      timeType
+    } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
+    let isVerify = true;
+
     let rejectMessage = undefined;
     let newMessageVar = body.queryResult.parameters;
-
     try {
-      agent.add(`${action} ${timePeriod} ${time} ${timeType}`);
+      agent.add(
+        `leaveIntent: ${specialIndicator} ${action} ${timePeriod} ${time} ${timeType}`
+      );
 
       //Create a new message variable and if not input time, set default to 4
 
-      if (action !== 'leave') {
-        rejectMessage = 'Unknown format';
-        return;
-      }
-      isVerify = true;
+      if (action !== 'leave') throw new Error('unknown format');
+
       if (time === '') {
-        if (timePeriod === 'morning' || 'afternoon') {
+        if (timePeriod === 'morning' || timePeriod === 'afternoon') {
           newMessageVar.time = 4;
         } else {
-          newMessageVar.time = undefined;
-          rejectMessage = 'Unknown time period';
+          throw new Error('unknown time period');
         }
       }
       newMessageVar.time = parseInt(newMessageVar.time, 10);
     } catch (err) {
+      isVerify = false;
       rejectMessage = err.message;
-      agent.add(`Error: ${err.message}`);
+      agent.add(`Error: ${rejectMessage}`);
       next(err);
     } finally {
       const profile = await client.getProfile(data.source.userId);
       await saveHistory(
-        _createFormatMoment(),
+        _createMomentDate(specialIndicator),
         {
           isVerify: isVerify,
           rejectMessage: rejectMessage,
@@ -179,26 +156,33 @@ function absentHandler(next) {
   return async agent => {
     console.log('absentHandler');
     const { body } = agent.request_;
-    const { action, time, timeType } = body.queryResult.parameters;
+    const {
+      specialIndicator,
+      action,
+      time,
+      timeType
+    } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
+    let isVerify = true;
     let rejectMessage = undefined;
     let newMessageVar = body.queryResult.parameters;
 
     try {
-      agent.add(`absent ${action} ${time} ${timeType}`);
+      agent.add(
+        `absentIntent: ${specialIndicator} ${action} ${time} ${timeType}`
+      );
 
-      isVerify = time === '' ? false : true;
-      rejectMessage = time === '' ? 'Unknown time' : undefined;
+      if (time === '') throw new Error('unknown time');
       newMessageVar.time = parseInt(newMessageVar.time, 10);
     } catch (err) {
+      isVerify = false;
       rejectMessage = err.message;
-      agent.add(`Error: ${err.message}`);
+      agent.add(`Error: ${rejectMessage}`);
       next(err);
     } finally {
       const profile = await client.getProfile(data.source.userId);
-
       await saveHistory(
-        _createFormatMoment(),
+        _createMomentDate(specialIndicator),
         {
           isVerify: isVerify,
           rejectMessage: rejectMessage,
@@ -237,7 +221,7 @@ function longAbsentHandler(next) {
         const dateArr = _findDateInterval(startDate, endDate);
 
         agent.add(
-          `long ${action} ${startDate} - ${endDate} duration:${dateArr.length}`
+          `longAbsentIntent: ${action} ${startDate} - ${endDate} duration: ${dateArr.length} days`
         );
         for (let i = 0; i < dateArr.length; i++) {
           await saveHistory(dateArr[i], message, agent, next);
@@ -247,11 +231,10 @@ function longAbsentHandler(next) {
         await saveHistory(_createFormatMoment(startDate), message, agent, next);
       }
     } catch (err) {
-      console.error(err);
       message.isVerify = false;
       message.rejectMessage = err.message;
       await saveHistory(_createFormatMoment(startDate), message, agent, next);
-      agent.add(`Error: ${err.message}`);
+      agent.add(`Error: ${message.rejectMessage}`);
       next(err);
     }
   };
@@ -266,18 +249,15 @@ function replyText(token, texts) {
 
 async function saveHistory(newDate, message, agent, next) {
   try {
-    const { uid } = (
-      await axios.get(`${USER_SERVER}/getEmployeeId/${message.lid}`)
-    ).data;
+    const uid = await db.getEmployeeId(message.lid);
 
     if (!uid) throw new Error('User not found');
     message.uid = uid;
 
-    const users = (await axios.get(`${USER_SERVER}/getAllUsers`)).data.user;
+    const users = await db.getUserList();
     const r = Math.floor(Math.random() * users.length);
     message.uid = users[r].uid;
     message.lid = users[r].lid;
-    message.uid = 'st011';
 
     const date = await Line.findOne({
       date: newDate
@@ -304,6 +284,25 @@ async function saveHistory(newDate, message, agent, next) {
     agent.add(`Save to history failed. Error: ${err.message}`);
     next(err);
   }
+}
+
+function _createMomentDate(type) {
+  let date = undefined;
+  switch (type) {
+    case 'tomorrow':
+      date = moment()
+        .add(1, 'days')
+        .tz('Asia/Bangkok');
+      break;
+    case 'yesterday':
+      date = moment()
+        .subtract(1, 'days')
+        .tz('Asia/Bangkok');
+      break;
+    default:
+      date = moment().tz('Asia/Bangkok');
+  }
+  return _createFormatMoment(date);
 }
 
 function _createMoment(date) {
@@ -338,7 +337,6 @@ function _findDateInterval(startDate, endDate) {
 module.exports = {
   defaultAction,
   initialize,
-  checkLineId,
   leaveHandler,
   absentHandler,
   longAbsentHandler
