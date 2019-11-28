@@ -1,3 +1,7 @@
+/**
+ * Intent Handler to handle different dialogflow intent
+ */
+
 const line = require('@line/bot-sdk');
 const Line = require('../db').lineDocument;
 const moment = require('moment-timezone');
@@ -10,7 +14,12 @@ let config = {
 
 const client = new line.Client(config);
 
-//Default Fall Back Intent handler
+/**
+ * Default Fallback Intent handler.
+ *
+ * Any intent that does not fall into other.
+ * intent will come here
+ */
 function defaultAction(next) {
   return async agent => {
     console.log('defaultAction');
@@ -46,7 +55,12 @@ function defaultAction(next) {
   };
 }
 
-//Initialize Intent handler
+/**
+ * Initialize Intent handler.
+ *
+ * Handle init command and update user lineId to database.
+ * User must use correct initCode
+ */
 function initialize(next) {
   return async agent => {
     console.log('initialize');
@@ -92,7 +106,13 @@ function initialize(next) {
   };
 }
 
-//Leave Intent handler
+/**
+ * Leave Intent handler.
+ *
+ * Handle leave less than one day.
+ * Will save all line message regardless of
+ * valid status
+ */
 function leaveHandler(next) {
   return async agent => {
     console.log('leaveHandler');
@@ -136,7 +156,7 @@ function leaveHandler(next) {
           lid: data.source.userId,
           message: body.queryResult.queryText,
           messageIntent: 'leaveIntent',
-          messageVar: newMessageVar,
+          messageVar: newMessageVar
         },
         agent,
         next
@@ -145,7 +165,13 @@ function leaveHandler(next) {
   };
 }
 
-//Absent Intent handler
+/**
+ * Absent Intent handler.
+ *
+ * Handle one day absent.
+ * Will save all line message regardless of
+ * valid status
+ */
 function absentHandler(next) {
   return async agent => {
     console.log('absentHandler');
@@ -183,7 +209,7 @@ function absentHandler(next) {
           lid: data.source.userId,
           message: body.queryResult.queryText,
           messageIntent: 'absentIntent',
-          messageVar: newMessageVar,
+          messageVar: newMessageVar
         },
         agent,
         next
@@ -192,7 +218,13 @@ function absentHandler(next) {
   };
 }
 
-//Long Absent Intent handler
+/**
+ * Long Absent Intent handler.
+ *
+ * Handle absent of one or more than one day.
+ * Will save all line message regardless of
+ * valid status
+ */
 function longAbsentHandler(next) {
   return async agent => {
     console.log('longAbsentHandler');
@@ -231,6 +263,13 @@ function longAbsentHandler(next) {
     }
   };
 }
+
+/**
+ * Function to simplify line replyMessage
+ * @param     {string} replyToken - replyToken
+ * @param     {string} text - replyText
+ * @example   replyText(replyToken, 'text')
+ */
 function replyText(token, texts) {
   texts = Array.isArray(texts) ? texts : [texts];
   return client.replyMessage(
@@ -239,6 +278,14 @@ function replyText(token, texts) {
   );
 }
 
+/**
+ * Function to save line message to daily history
+ * @param     {string} newDate - date to save history to
+ * @param     {Object} message - message object to save
+ * @param     {Object} agent - dialogflow agent
+ * @param     {Object} next - express next
+ * @example   replyText(replyToken, 'text')
+ */
 async function saveHistory(newDate, message, agent, next) {
   try {
     console.log('saving to history');
@@ -274,6 +321,12 @@ async function saveHistory(newDate, message, agent, next) {
   }
 }
 
+/**
+ * Function to change date according to type
+ * @param     {string} type - type from dialogflow
+ * @return    {Date} date - moment date
+ * @example   _createMomentDate('tomorrow')
+ */
 function _createMomentDate(type) {
   let date = undefined;
   switch (type) {
@@ -293,11 +346,23 @@ function _createMomentDate(type) {
   return _createFormatMoment(date);
 }
 
+/**
+ * Create a moment date from date string
+ * @param     {string} date - date to create
+ * @returns   {Date} moment date
+ * @example    _createMoment('10/10/2019')
+ */
 function _createMoment(date) {
   if (!date) return moment().tz('Asia/Bangkok');
   else return moment(date).tz('Asia/Bangkok');
 }
 
+/**
+ * Create a moment date(format) from date string
+ * @param     {string} date - date to create
+ * @returns   {Date} moment date
+ * @example    _createFormatMoment('10/10/2019')
+ */
 function _createFormatMoment(date) {
   if (!date)
     return moment()
@@ -309,6 +374,13 @@ function _createFormatMoment(date) {
       .format('DD/MM/YYYY');
 }
 
+/**
+ * Find array of date from input interval
+ * @param     {Date} startDate - start of interval
+ * @param     {Date} endDate - end of interval
+ * @returns   {Array} array of moment date
+ * @example    _createFormatMoment('10/10/2019')
+ */
 function _findDateInterval(startDate, endDate) {
   startDate = _createMoment(startDate);
   endDate = _createMoment(endDate);

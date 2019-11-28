@@ -2,8 +2,20 @@
 
 const httpStatus = require('http-status');
 
+/**
+ * Error handler middlewear
+ *
+ * @response
+ *       400:
+ *         description: Mongo related error
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Unknown error
+ */
 module.exports = (err, req, res, next) => {
   console.log('errorHandler');
+  console.error(err);
   const getStatusCode = err => {
     let numberFromStatus = Number.isInteger(err.status) && err.status;
     let numberFromCode = Number.isInteger(err.code) && err.code;
@@ -20,6 +32,11 @@ module.exports = (err, req, res, next) => {
   }
 
   const status = getStatusCode(err);
-  console.error(err.message);
-  console.error(err);
+  res.status(status).json({
+    error: {
+      code: status,
+      status: httpStatus[status],
+      message: err.message
+    }
+  });
 };

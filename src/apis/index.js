@@ -5,11 +5,21 @@ const intent = require('../utils/intentHandler');
 const Line = require('../db').lineDocument;
 const moment = require('moment-timezone');
 
+/**
+ * GET
+ *   /
+ *     @description To test api to line service
+ *     @return {string} Hello message
+ */
 exports.helloWorld = (req, res, next) => {
   console.log('Hello World! line-service');
   res.json({ message: 'Hello World! line-service' });
 };
 
+/**
+ * Middlewear that check if dialogflow token exist
+ * @param req.headers.authorization {string} Bearer token.
+ */
 exports.ensureToken = async (req, res, next) => {
   const bearerHeader = req.headers['authorization'];
   if (typeof bearerHeader !== 'undefined') {
@@ -22,6 +32,10 @@ exports.ensureToken = async (req, res, next) => {
   }
 };
 
+/**
+ * Middlewear that check if dialogflow token is valid
+ * @param req.headers.authorization {string} Bearer token.
+ */
 exports.authorization = async (req, res, next) => {
   //decode token using base64 decoder
   let buff = Buffer.from(req.token, 'base64');
@@ -33,7 +47,12 @@ exports.authorization = async (req, res, next) => {
   } else throw new Error('incorrect username or password');
 };
 
-//Dialogflow webhook
+/**
+ * POST
+ *   /webhook
+ *     @description Dialogflow webhook, will forward request to
+ *                  respective intentHandler
+ */
 exports.webhook = async (req, res, next) => {
   console.log('webhook');
   var agent = new WebhookClient({ request: req, response: res });
@@ -47,6 +66,12 @@ exports.webhook = async (req, res, next) => {
   await agent.handleRequest(intentMap);
 };
 
+/**
+ * GET
+ *   /getAllLine
+ *     @description To get a list of all line data
+ *      @return {Array} Array of line data object
+ */
 exports.getAllLine = async (req, res) => {
   console.log('getAllLine');
   const lineRes = await Line.find({}, null);
@@ -55,6 +80,13 @@ exports.getAllLine = async (req, res) => {
   });
 };
 
+/**
+ * POST
+ *   /createLine
+ *     @description Create new line data
+ *      @param req.body.line {Object} Line data object.
+ *      @return {Object} Line data object
+ */
 exports.createLine = async (req, res) => {
   console.log('createLine');
   const { dateQuery } = req.body;
@@ -73,6 +105,13 @@ exports.createLine = async (req, res) => {
   });
 };
 
+/**
+ * POST
+ *   /findLineById/:lineId
+ *     @description Query for line data by id
+ *      @param req.params.lineId {string} Line mongo id.
+ *      @return {object} Line data object
+ */
 exports.findLineById = async (req, res) => {
   console.log('getLine');
   const lineRes = await Line.findOne({ _id: req.params.lid });
@@ -81,6 +120,13 @@ exports.findLineById = async (req, res) => {
   });
 };
 
+/**
+ * POST
+ *   /findLine
+ *     @description Query for line data by query
+ *      @param req.body.dateQuery {Object} Line data object.
+ *      @return {object} Line data object
+ */
 exports.findLine = async (req, res) => {
   const { dateQuery } = req.body;
   const [day, month, year] = _parseDate(dateQuery);
@@ -98,6 +144,14 @@ exports.findLine = async (req, res) => {
   });
 };
 
+/**
+ * PATCH
+ *   /updateLine/:lineId
+ *     @description Update line data
+ *      @param req.params.dateId {string} line mongo id.
+ *      @param req.body.query {Object} Line data object.
+ *      @return {Object} Line data object
+ */
 exports.updateLine = async (req, res) => {
   console.log('updateLine');
   let newLine = req.body;
@@ -107,6 +161,13 @@ exports.updateLine = async (req, res) => {
   });
 };
 
+/**
+ * DELETE
+ *   /deleteLine/:lineId
+ *     @description Delete line data
+ *      @param req.params.lineId {string} Line mongo id.
+ *      @return {object} Delete response
+ */
 exports.deleteLine = async (req, res) => {
   console.log('deleteLine');
   const line = await Line.deleteOne({ _id: req.params.lid });
@@ -121,16 +182,40 @@ exports.deleteLine = async (req, res) => {
   res.json(response);
 };
 
+//The following route are use for testing and development
+
+/**
+ * GET
+ *   /deleteAllLine
+ *     @description Delete all line data
+ *      @return {Object} Delete respond
+ */
 exports.deleteAllLine = async (req, res) => {
   console.log('deleteAllLine');
   const line = await Line.deleteMany({});
   res.json(line);
 };
 
+//Function
+
+/**
+ * Parse date string into array of date (number)
+ * @param     {string} date - string of date
+ * @returns   {number} number
+ * @example    _parseDate('10/10/2019')
+ */
 function _parseDate(date) {
   return date.split('/').map(d => parseInt(d, 10));
 }
 
+/**
+ * Create a moment date from date string
+ * @param     {number} day
+ * @param     {number} month
+ * @param     {number} year
+ * @returns   {Date} moment date
+ * @example    _createMoment(10,10,2019)
+ */
 function _createMoment(day, month, year) {
   return moment([year, month - 1, day])
     .tz('Asia/Bangkok')
