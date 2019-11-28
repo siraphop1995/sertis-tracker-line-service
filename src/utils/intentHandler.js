@@ -106,7 +106,6 @@ function leaveHandler(next) {
     } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
     let isVerify = true;
-
     let rejectMessage = undefined;
     let newMessageVar = body.queryResult.parameters;
     try {
@@ -129,7 +128,6 @@ function leaveHandler(next) {
       agent.add(`Error: ${rejectMessage}`);
       next(err);
     } finally {
-      const profile = await client.getProfile(data.source.userId);
       await saveHistory(
         _createMomentDate(specialIndicator),
         {
@@ -139,7 +137,6 @@ function leaveHandler(next) {
           message: body.queryResult.queryText,
           messageIntent: 'leaveIntent',
           messageVar: newMessageVar,
-          displayName: profile.displayName
         },
         agent,
         next
@@ -163,7 +160,6 @@ function absentHandler(next) {
     let isVerify = true;
     let rejectMessage = undefined;
     let newMessageVar = body.queryResult.parameters;
-
     try {
       if (action !== 'leave') throw new Error('not absentIntent');
 
@@ -179,7 +175,6 @@ function absentHandler(next) {
       agent.add(`Error: ${rejectMessage}`);
       next(err);
     } finally {
-      const profile = await client.getProfile(data.source.userId);
       await saveHistory(
         _createMomentDate(specialIndicator),
         {
@@ -189,7 +184,6 @@ function absentHandler(next) {
           message: body.queryResult.queryText,
           messageIntent: 'absentIntent',
           messageVar: newMessageVar,
-          displayName: profile.displayName
         },
         agent,
         next
@@ -205,11 +199,9 @@ function longAbsentHandler(next) {
     const { body } = agent.request_;
     let { action, startDate, endDate } = body.queryResult.parameters;
     const { data } = body.originalDetectIntentRequest.payload;
-    const profile = await client.getProfile(data.source.userId);
     let message = {
       isVerify: true,
       lid: data.source.userId,
-      displayName: profile.displayName,
       rejectMessage: undefined,
       message: body.queryResult.queryText,
       messageIntent: 'longAbsentIntent',
@@ -249,7 +241,7 @@ function replyText(token, texts) {
 
 async function saveHistory(newDate, message, agent, next) {
   try {
-    console.log('saving to history')
+    console.log('saving to history');
     const uid = await db.getEmployeeId(message.lid);
 
     if (!uid) throw new Error('User not found');
