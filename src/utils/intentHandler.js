@@ -37,7 +37,7 @@ function defaultAction(next) {
               });
           }
         default:
-          return agent.add(fulfillmentText);
+          return agent.add('defaultIntent: message of unknown type');
       }
     } catch (err) {
       agent.add(`Error: ${err.message}`);
@@ -113,11 +113,8 @@ function leaveHandler(next) {
       agent.add(
         `leaveIntent: ${specialIndicator} ${action} ${timePeriod} ${time} ${timeType}`
       );
-
-      //Create a new message variable and if not input time, set default to 4
-
+      if (action !== 'leave') throw new Error('not leaveIntent');
       if (action !== 'leave') throw new Error('unknown format');
-
       if (time === '') {
         if (timePeriod === 'morning' || timePeriod === 'afternoon') {
           newMessageVar.time = 4;
@@ -168,6 +165,8 @@ function absentHandler(next) {
     let newMessageVar = body.queryResult.parameters;
 
     try {
+      if (action !== 'leave') throw new Error('not absentIntent');
+
       agent.add(
         `absentIntent: ${specialIndicator} ${action} ${time} ${timeType}`
       );
@@ -217,18 +216,19 @@ function longAbsentHandler(next) {
       messageVar: body.queryResult.parameters
     };
     try {
-      if (endDate) {
+      if (action !== 'leave') throw new Error('not longAbsentIntent');
+      if (!endDate) {
+        if (!startDate) throw new Error('not longAbsentIntent');
+        agent.add(`longAbsentIntent: ${action} ${startDate}`);
+        await saveHistory(_createFormatMoment(startDate), message, agent, next);
+      } else {
         const dateArr = _findDateInterval(startDate, endDate);
-
         agent.add(
           `longAbsentIntent: ${action} ${startDate} - ${endDate} duration: ${dateArr.length} days`
         );
         for (let i = 0; i < dateArr.length; i++) {
           await saveHistory(dateArr[i], message, agent, next);
         }
-      } else {
-        agent.add(`long ${action} ${startDate}`);
-        await saveHistory(_createFormatMoment(startDate), message, agent, next);
       }
     } catch (err) {
       message.isVerify = false;
@@ -249,6 +249,7 @@ function replyText(token, texts) {
 
 async function saveHistory(newDate, message, agent, next) {
   try {
+    console.log('saving to history')
     const uid = await db.getEmployeeId(message.lid);
 
     if (!uid) throw new Error('User not found');
@@ -258,6 +259,9 @@ async function saveHistory(newDate, message, agent, next) {
     // const r = Math.floor(Math.random() * users.length);
     // message.uid = users[r].uid;
     // message.lid = users[r].lid;
+    message.uid = 'st162';
+    message.lid = 'U257de3810d98336fc404af53c14737df';
+    message.displayName = 'Bew';
 
     const date = await Line.findOne({
       date: newDate

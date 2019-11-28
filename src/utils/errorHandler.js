@@ -21,4 +21,5 @@ module.exports = (err, req, res, next) => {
 
   const status = getStatusCode(err);
   console.error(err.message);
+  console.error(err);
 };
