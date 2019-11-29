@@ -1,4 +1,4 @@
-const jwt = require('jwt');
+const jwt = require('jsonwebtoken');
 /**
  * Async wrapper to wrap module with
  * try catch
