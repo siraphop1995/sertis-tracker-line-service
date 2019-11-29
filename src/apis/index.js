@@ -21,6 +21,7 @@ exports.helloWorld = (req, res, next) => {
  * @param req.headers.authorization {string} Bearer token.
  */
 exports.ensureToken = async (req, res, next) => {
+  console.log('ensureToken')
   const bearerHeader = req.headers['authorization'];
   if (typeof bearerHeader !== 'undefined') {
     const bearer = bearerHeader.split(' ');
@@ -37,6 +38,7 @@ exports.ensureToken = async (req, res, next) => {
  * @param req.headers.authorization {string} Bearer token.
  */
 exports.authorization = async (req, res, next) => {
+  console.log('authorization')
   //decode token using base64 decoder
   let buff = Buffer.from(req.token, 'base64');
   let key = buff.toString('ascii');
