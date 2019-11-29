@@ -32,11 +32,4 @@ module.exports = (err, req, res, next) => {
   }
 
   const status = getStatusCode(err);
-  res.status(status).json({
-    error: {
-      code: status,
-      status: httpStatus[status],
-      message: err.message
-    }
-  });
 };
