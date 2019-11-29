@@ -14,7 +14,7 @@ module.exports = (router, routes, methods) => {
     const { middlewares = [] } = routes[route];
     const methodChain = middlewares.reduce((chain, middleware) => {
       return chain.concat([asyncWrapper(methods[middleware])]);
-    }, [checkToken]);
+    }, []);
 
     router[httpVerb.toLowerCase()](resourceUri, methodChain);
   };
