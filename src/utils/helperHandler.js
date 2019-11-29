@@ -1,3 +1,4 @@
+const jwt = require('jwt');
 /**
  * Async wrapper to wrap module with
  * try catch
