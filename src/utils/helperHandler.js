@@ -26,6 +26,7 @@ function asyncWrapper(fn) {
  *         return {string} Rejection mesage
  */
 function checkToken(req, res, next) {
+  if (req.url == '/webhook' && req.method == 'POST') return next();
   let token = req.headers['authorization'];
   if (token) {
     if (token.startsWith('Bearer ')) {
